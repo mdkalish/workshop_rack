@@ -1,4 +1,5 @@
 require 'workshop_rack/version'
+require 'pry'
 
 class WorkshopRack
   def initialize(app, options = {})
