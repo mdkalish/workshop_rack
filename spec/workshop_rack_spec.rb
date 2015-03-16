@@ -22,10 +22,20 @@ describe WorkshopRack do
       get '/'
       expect(last_response.headers).to have_key('X-RateLimit-Limit')
     end
+
+    it 'adds X-RateLimit-Remaining header' do
+      get '/'
+      expect(last_response.headers).to have_key('X-RateLimit-Remaining')
+    end
+
+    it 'decreases the X-RateLimit-Remaining header' do
+      3.times { get '/' }
+      expect(last_response.headers['X-RateLimit-Remaining']).to eq('57')
+    end
   end
 
   context 'when request with opts is sent' do
-    let(:app) { Rack::Lint.new(WorkshopRack.new(test_app, limit: '21')) }
+    let(:app) { Rack::Lint.new(WorkshopRack.new(test_app, limit: 21)) }
 
     it 'adds arbitrary X-RateLimit-Limit header' do
       get '/'
