@@ -1,3 +1,3 @@
-module WorkshopRack
+class WorkshopRack
   VERSION = "0.1.0"
 end
