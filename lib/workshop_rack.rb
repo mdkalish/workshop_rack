@@ -9,10 +9,11 @@ class WorkshopRack
   end
 
   def call(env)
-    status, headers, body = @app.call(env)
     decrease_ratelimit
+    return [429, {}, ['Too many requests.']] if @x_ratelimit_remaining < 0
+    @status, headers, body = @app.call(env)
     prepare_headers(headers)
-    [status, headers, body]
+    [@status, headers, body]
   end
 
   private

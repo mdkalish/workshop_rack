@@ -35,11 +35,18 @@ describe WorkshopRack do
   end
 
   context 'when request with opts is sent' do
-    let(:app) { Rack::Lint.new(WorkshopRack.new(test_app, limit: 21)) }
+    let(:app) { Rack::Lint.new(WorkshopRack.new(test_app, limit: 4)) }
 
     it 'adds arbitrary X-RateLimit-Limit header' do
       get '/'
-      expect(last_response.headers['X-RateLimit-Limit']).to eq('21')
+      expect(last_response.headers['X-RateLimit-Limit']).to eq('4')
+    end
+
+    it 'blocks requests after hitting the X-RateLimit-Remaining' do
+      5.times { get '/' }
+      expect(last_response).not_to be_ok
+      expect(last_response.status).to eq(429)
+      expect(last_response.body).to eq('Too many requests.')
     end
   end
 end
