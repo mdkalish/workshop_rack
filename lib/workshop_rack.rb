@@ -5,13 +5,13 @@ class WorkshopRack
   def initialize(app, options = {})
     @app = app
     @options = options
-    @x_ratelimit_remaining = @options[:limit] || 60
+    @remaining_requests = @options[:limit] || 60
   end
 
   def call(env)
-    decrease_ratelimit
-    return [429, {}, ['Too many requests.']] if @x_ratelimit_remaining < 0
+    return [429, {}, ['Too many requests.']] if @remaining_requests <= 0
     @status, headers, body = @app.call(env)
+    decrease_ratelimit
     prepare_headers(headers)
     [@status, headers, body]
   end
@@ -19,12 +19,12 @@ class WorkshopRack
   private
 
   def decrease_ratelimit
-    @x_ratelimit_remaining -= 1
+    @remaining_requests -= 1
   end
 
   def prepare_headers(headers)
     add_header(headers, 'X-RateLimit-Limit', @options[:limit] || 60)
-    add_header(headers, 'X-RateLimit-Remaining', @x_ratelimit_remaining)
+    add_header(headers, 'X-RateLimit-Remaining', @remaining_requests)
   end
 
   def add_header(headers, header, value)
