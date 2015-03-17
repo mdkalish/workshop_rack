@@ -7,10 +7,13 @@ class WorkshopRack
     @app = app
     @options = options
     @remaining_requests = @options[:limit] || 60
+    @clients = {}
   end
 
   def call(env)
     return [429, {}, ['Too many requests.']] if @remaining_requests <= 0
+    @ip = env['REMOTE_ADDR']
+    @clients[@ip] ||= {}
     @status, @headers, body = @app.call(env)
     prepare_headers
     [@status, @headers, body]
@@ -27,7 +30,7 @@ class WorkshopRack
   end
 
   def decrease_ratelimit
-    @remaining_requests -= 1
+    @remaining_requests  = @clients[@ip]['remaining_requests'] -= 1
   end
 
   def set_header(header, value)
@@ -35,9 +38,10 @@ class WorkshopRack
   end
 
   def reset_time
+    @reset_time = @clients[@ip]['reset_time']
     if @reset_time.nil? || Time.now.to_i - @reset_time > 3600
-      @reset_time = Time.now.to_i
-      @remaining_requests = @options[:limit] || 60
+      @reset_time = @clients[@ip]['reset_time'] = Time.now.to_i
+      @remaining_requests = @clients[@ip]['remaining_requests'] = @options[:limit] || 60
     end
   end
 end

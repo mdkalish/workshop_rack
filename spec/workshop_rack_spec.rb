@@ -11,7 +11,7 @@ describe WorkshopRack do
     expect(WorkshopRack::VERSION).not_to be nil
   end
 
-  context 'upon any request', focus: true do
+  context 'upon any request' do
     it 'returns correct response' do
       get '/'
       expect(last_response.body).to eq('Smoke test, darling.')
@@ -40,11 +40,27 @@ describe WorkshopRack do
     it 'resets X-RateLimit-Remaining after timelimit lapse' do
       remaining_before_calls = get('/').headers['X-RateLimit-Remaining'].to_i
       5.times { get '/' }
-      remaining_after_calls = get('/').headers['X-RateLimit-Remaining'].to_i
-      expect(remaining_after_calls).to eq(remaining_before_calls - 6)
+      remaining_after_calls = last_response.headers['X-RateLimit-Remaining'].to_i
+      expect(remaining_after_calls).to eq(remaining_before_calls - 5)
+
       Timecop.travel(Time.now + 3601) # lapse is 3600
       remaining_after_reset = get('/').headers['X-RateLimit-Remaining'].to_i
       expect(remaining_after_reset).to eq(remaining_before_calls)
+    end
+  end
+
+  context 'when requests come from various users' do
+    it 'keeps separate ratelimits' do
+      get '/', {}, 'REMOTE_ADDR' => '10.0.0.1'
+      expect(last_response.headers['X-RateLimit-Remaining']).to eq('59')
+      3.times { get '/', {}, 'REMOTE_ADDR' => '10.0.0.2' }
+      expect(last_response.headers['X-RateLimit-Remaining']).to eq('57')
+      get '/', {}, 'REMOTE_ADDR' => '10.0.0.1'
+      expect(last_response.headers['X-RateLimit-Remaining']).to eq('58')
+      4.times { get '/', {}, 'REMOTE_ADDR' => '10.0.0.2' }
+      expect(last_response.headers['X-RateLimit-Remaining']).to eq('53')
+      5.times { get '/', {}, 'REMOTE_ADDR' => '10.0.0.3' }
+      expect(last_response.headers['X-RateLimit-Remaining']).to eq('55')
     end
   end
 
