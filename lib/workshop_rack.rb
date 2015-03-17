@@ -1,4 +1,5 @@
 require 'workshop_rack/version'
+require 'time'
 require 'pry'
 
 class WorkshopRack
@@ -10,24 +11,33 @@ class WorkshopRack
 
   def call(env)
     return [429, {}, ['Too many requests.']] if @remaining_requests <= 0
-    @status, headers, body = @app.call(env)
-    decrease_ratelimit
-    prepare_headers(headers)
-    [@status, headers, body]
+    @status, @headers, body = @app.call(env)
+    prepare_headers
+    [@status, @headers, body]
   end
 
   private
+
+  def prepare_headers
+    reset_time
+    decrease_ratelimit
+    set_header('X-RateLimit-Limit', @options[:limit] || 60)
+    set_header('X-RateLimit-Remaining', @remaining_requests)
+    set_header('X-RateLimit-Reset', @reset_time)
+  end
 
   def decrease_ratelimit
     @remaining_requests -= 1
   end
 
-  def prepare_headers(headers)
-    add_header(headers, 'X-RateLimit-Limit', @options[:limit] || 60)
-    add_header(headers, 'X-RateLimit-Remaining', @remaining_requests)
+  def set_header(header, value)
+    @headers[header] = value.to_s
   end
 
-  def add_header(headers, header, value)
-    headers.merge!(header.to_s => value.to_s) # By the SPEC, headers must be String
+  def reset_time
+    if @reset_time.nil? || Time.now.to_i - @reset_time > 3600
+      @reset_time = Time.now.to_i
+      @remaining_requests = @options[:limit] || 60
+    end
   end
 end
