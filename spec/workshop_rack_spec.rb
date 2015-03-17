@@ -48,5 +48,19 @@ describe WorkshopRack do
       expect(last_response.status).to eq(429)
       expect(last_response.body).to eq('Too many requests.')
     end
+
+    it 'calls the app within ratelimit' do
+      expect(test_app).to receive(:call).and_call_original
+      get '/'
+    end
+
+    context 'when hit limit is reached' do
+      before { 4.times { get '/' } }
+
+      it 'prevents calling the app if ratelimit hit' do
+        expect(test_app).not_to receive(:call)
+        get '/'
+      end
+    end
   end
 end
