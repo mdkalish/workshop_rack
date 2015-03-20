@@ -2,9 +2,9 @@ require 'spec_helper'
 require 'workshop_rack'
 require 'timecop'
 
-describe WorkshopRack do
+describe WorkshopRack, focus: true do
   include Rack::Test::Methods
-  let(:test_app) { ->(_env) { ['200', {'Content-Type' => 'text/html'}, ['Smoke test, darling.']] } }
+  let(:test_app) { ->(_env) { [200, {'Content-Type' => 'text/html'}, ['Smoke test, darling.']] } }
   let(:app) { Rack::Lint.new(WorkshopRack.new(test_app)) }
 
   it 'has a version number' do
@@ -50,17 +50,72 @@ describe WorkshopRack do
   end
 
   context 'when requests come from various users' do
-    it 'keeps separate ratelimits' do
-      get '/', {}, 'REMOTE_ADDR' => '10.0.0.1'
-      expect(last_response.headers['X-RateLimit-Remaining']).to eq('59')
-      3.times { get '/', {}, 'REMOTE_ADDR' => '10.0.0.2' }
-      expect(last_response.headers['X-RateLimit-Remaining']).to eq('57')
-      get '/', {}, 'REMOTE_ADDR' => '10.0.0.1'
-      expect(last_response.headers['X-RateLimit-Remaining']).to eq('58')
-      4.times { get '/', {}, 'REMOTE_ADDR' => '10.0.0.2' }
-      expect(last_response.headers['X-RateLimit-Remaining']).to eq('53')
-      5.times { get '/', {}, 'REMOTE_ADDR' => '10.0.0.3' }
-      expect(last_response.headers['X-RateLimit-Remaining']).to eq('55')
+    context 'distinguished by ips' do
+      it 'keeps separate ratelimits' do
+        get '/', {}, 'REMOTE_ADDR' => '10.0.0.1'
+        expect(last_response.headers['X-RateLimit-Remaining']).to eq('59')
+
+        3.times { get('/', {}, 'REMOTE_ADDR' => '10.0.0.2') }
+        expect(last_response.headers['X-RateLimit-Remaining']).to eq('57')
+
+        get '/', {}, 'REMOTE_ADDR' => '10.0.0.1'
+        expect(last_response.headers['X-RateLimit-Remaining']).to eq('58')
+
+        4.times { get '/', {}, 'REMOTE_ADDR' => '10.0.0.2' }
+        expect(last_response.headers['X-RateLimit-Remaining']).to eq('53')
+
+        5.times { get '/', {}, 'REMOTE_ADDR' => '10.0.0.3' }
+        expect(last_response.headers['X-RateLimit-Remaining']).to eq('55')
+      end
+    end
+
+    context 'distinguished by custom ids passed in block' do
+      context 'when block returns valid identifier' do
+        let (:app) { WorkshopRack.new(test_app) { |env| env['QUERY_STRING'] } }
+
+        it 'responds with limiting headers' do
+          get '/'
+          expect(last_response.headers['X-RateLimit-Limit']).not_to be_nil
+          expect(last_response.headers['X-RateLimit-Remaining']).not_to be_nil
+          expect(last_response.headers['X-RateLimit-Reset']).not_to be_nil
+        end
+
+        it 'keeps separate ratelimits' do
+          2.times { get '/', {}, 'QUERY_STRING' => 'qs_token_one' }
+          expect(last_response.headers['X-RateLimit-Remaining']).to eq('58')
+
+          3.times { get '/', {}, 'QUERY_STRING' => 'qs_token_two' }
+          expect(last_response.headers['X-RateLimit-Remaining']).to eq('57')
+
+          4.times { get '/', {}, 'QUERY_STRING' => 'qs_token_one' }
+          expect(last_response.headers['X-RateLimit-Remaining']).to eq('54')
+
+          5.times { get '/', {}, 'QUERY_STRING' => 'qs_token_three' }
+          expect(last_response.headers['X-RateLimit-Remaining']).to eq('55')
+        end
+
+        it 'responds 429 if limit hit' do
+          61.times { get('/', {}, 'QUERY_STRING' => 'qs_token_four') }
+          expect(last_response.status).to eq(429)
+          expect(last_response.body).to eq('Too many requests.')
+        end
+      end
+
+      context 'when block returns nil' do
+        let(:stack) { Rack::Lint.new(WorkshopRack.new(app) { nil }) }
+        let(:request) { Rack::MockRequest.new(stack) }
+        let(:response) { request.get('/') }
+
+        it 'responds with 418' do
+          expect(response.status).to eq(418)
+          expect(response.body).to eq("I'm a teapot")
+        end
+
+        it 'responds without limiting headers' do
+          expect(response.headers.length).to eq(1)
+          expect(response.headers.keys).to eq(['Content-Length'])
+        end
+      end
     end
   end
 
