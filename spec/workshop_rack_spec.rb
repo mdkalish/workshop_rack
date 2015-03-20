@@ -102,25 +102,26 @@ describe RateLimiter do
       end
 
       context 'when block returns nil' do
-        let(:stack) { Rack::Lint.new(RateLimiter.new(app) { nil }) }
-        let(:request) { Rack::MockRequest.new(stack) }
+        let(:app) { RateLimiter.new(test_app) { nil } }
+        let(:request) { Rack::MockRequest.new(app) }
         let(:response) { request.get('/') }
 
-        it 'responds with 418' do
-          expect(response.status).to eq(418)
-          expect(response.body).to eq("I'm a teapot")
+        it 'no limiting headers are present' do
+          expect(response.headers['X-RateLimit-Limit']).to be_nil
+          expect(response.headers['X-RateLimit-Remaining']).to be_nil
+          expect(response.headers['X-RateLimit-Reset']).to be_nil
         end
 
         it 'responds without limiting headers' do
-          expect(response.headers.length).to eq(1)
-          expect(response.headers.keys).to eq(['Content-Length'])
+          expect(response.headers.length).to eq(2)
+          expect(response.headers.keys).to eq(['Content-Type', 'Content-Length'])
         end
       end
     end
   end
 
   context 'when app is initialized with options[:limit]' do
-    let(:app) { Rack::Lint.new(RateLimiter.new(test_app, limit: 4)) }
+    let(:app) { RateLimiter.new(test_app, limit: 4) }
 
     it 'adds arbitrary X-RateLimit-Limit header' do
       get '/'
@@ -143,6 +144,12 @@ describe RateLimiter do
       4.times { get '/' }
       expect(test_app).not_to receive(:call)
       get '/'
+    end
+
+    it 'does not prevent calling the app if ratelimit hit by other client' do
+      4.times { get '/' }
+      expect(test_app).to receive(:call).and_call_original
+      get '/', {}, 'REMOTE_ADDR' => '10.0.0.4'
     end
   end
 end

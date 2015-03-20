@@ -7,20 +7,19 @@ class RateLimiter
     @options = options
     @remaining_requests = @options[:limit] || 60
     @clients = {}
-    @block = block || ->(_env) {}
+    @block = block
   end
 
   def call(env)
-    if nil_or_empty? [env['REMOTE_ADDR'], @block.call(env)]
-      return [418, {}, ["I'm a teapot"]]
-    elsif !nil_or_empty? [@block.call(env)]
-      @id = @block.call(env)
-    else
-      @id = env['REMOTE_ADDR']
+    if !@block.nil? && nil_or_empty?([@block.call(env)])
+      @status, @headers, body = @app.call(env)
+      return [@status, @headers, body]
     end
-
-    return [429, {}, ['Too many requests.']] if @remaining_requests <= 0
-    @clients[@id] ||= {}
+    determine_id(env)
+    if @remaining_requests <= 0 && @last_id == @id
+      return [429, {}, ['Too many requests.']]
+    end
+    @last_id = @id
     @status, @headers, body = @app.call(env)
     prepare_headers
     [@status, @headers, body]
@@ -33,7 +32,16 @@ class RateLimiter
     obj.all? { respond_to?(:empty?) ? !!empty? : !self }
   end
 
+  def determine_id(env)
+    if @block.nil?
+      @id = env['REMOTE_ADDR']
+    elsif @block.call(env)
+      @id = @block.call(env)
+    end
+  end
+
   def prepare_headers
+    @clients[@id] ||= {}
     reset_time
     decrease_ratelimit
     set_header('X-RateLimit-Limit', @options[:limit] || 60)
@@ -42,7 +50,7 @@ class RateLimiter
   end
 
   def decrease_ratelimit
-    @remaining_requests  = @clients[@id]['remaining_requests'] -= 1
+    @remaining_requests = @clients[@id]['remaining_requests'] -= 1
   end
 
   def set_header(header, value)
