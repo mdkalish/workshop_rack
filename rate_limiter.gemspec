@@ -1,11 +1,11 @@
 # coding: utf-8
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'workshop_rack/version'
+require 'rate_limiter/version'
 
 Gem::Specification.new do |spec|
-  spec.name          = 'workshop_rack'
-  spec.version       = WorkshopRack::VERSION
+  spec.name          = 'RateLimiter'
+  spec.version       = RateLimiter::VERSION
   spec.authors       = 'mdkalish'
   spec.email         = 'mdkalish4git@gmail.com'
   spec.summary       = 'Pilot Rack Workshop'

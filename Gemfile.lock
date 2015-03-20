@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    workshop_rack (0.1.0)
+    RateLimiter (0.1.0)
 
 GEM
   remote: https://rubygems.org/
@@ -37,10 +37,10 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  RateLimiter!
   bundler (~> 1.8)
   pry (~> 0.10)
   rack-test (~> 0.6)
   rake (~> 10.0)
   rspec (~> 3.2)
   timecop (~> 0.7)
-  workshop_rack!

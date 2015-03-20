@@ -1,3 +1,3 @@
-class WorkshopRack
+class RateLimiter
   VERSION = "0.1.0"
 end

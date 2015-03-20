@@ -1,7 +1,7 @@
 require 'time'
 require 'pry'
 
-class WorkshopRack
+class RateLimiter
   def initialize(app, options = {}, &block)
     @app = app
     @options = options

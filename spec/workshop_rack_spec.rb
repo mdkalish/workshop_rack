@@ -1,14 +1,12 @@
 require 'spec_helper'
-require 'workshop_rack'
-require 'timecop'
 
-describe WorkshopRack, focus: true do
+describe RateLimiter do
   include Rack::Test::Methods
   let(:test_app) { ->(_env) { [200, {'Content-Type' => 'text/html'}, ['Smoke test, darling.']] } }
-  let(:app) { Rack::Lint.new(WorkshopRack.new(test_app)) }
+  let(:app) { Rack::Lint.new(RateLimiter.new(test_app)) }
 
   it 'has a version number' do
-    expect(WorkshopRack::VERSION).not_to be nil
+    expect(RateLimiter::VERSION).not_to be nil
   end
 
   context 'upon any request' do
@@ -20,11 +18,13 @@ describe WorkshopRack, focus: true do
     it 'adds X-RateLimit-Limit header' do
       get '/'
       expect(last_response.headers).to have_key('X-RateLimit-Limit')
+      expect(last_response.headers['X-RateLimit-Limit']).to eq('60')
     end
 
     it 'adds X-RateLimit-Remaining header' do
       get '/'
       expect(last_response.headers).to have_key('X-RateLimit-Remaining')
+      expect(last_response.headers['X-RateLimit-Remaining']).to eq('59')
     end
 
     it 'adds X-RateLimit-Reset header' do
@@ -71,7 +71,7 @@ describe WorkshopRack, focus: true do
 
     context 'distinguished by custom ids passed in block' do
       context 'when block returns valid identifier' do
-        let (:app) { WorkshopRack.new(test_app) { |env| env['QUERY_STRING'] } }
+        let (:app) { RateLimiter.new(test_app) { |env| env['QUERY_STRING'] } }
 
         it 'responds with limiting headers' do
           get '/'
@@ -102,7 +102,7 @@ describe WorkshopRack, focus: true do
       end
 
       context 'when block returns nil' do
-        let(:stack) { Rack::Lint.new(WorkshopRack.new(app) { nil }) }
+        let(:stack) { Rack::Lint.new(RateLimiter.new(app) { nil }) }
         let(:request) { Rack::MockRequest.new(stack) }
         let(:response) { request.get('/') }
 
@@ -119,8 +119,8 @@ describe WorkshopRack, focus: true do
     end
   end
 
-  context 'when request with opts is sent' do
-    let(:app) { Rack::Lint.new(WorkshopRack.new(test_app, limit: 4)) }
+  context 'when app is initialized with options[:limit]' do
+    let(:app) { Rack::Lint.new(RateLimiter.new(test_app, limit: 4)) }
 
     it 'adds arbitrary X-RateLimit-Limit header' do
       get '/'
