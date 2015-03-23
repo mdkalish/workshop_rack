@@ -1,12 +1,13 @@
 require 'time'
+require 'rate_limiter/store'
 require 'pry'
 
 class RateLimiter
-  def initialize(app, options = {}, &block)
+  def initialize(app, options = {}, store = Store.new, &block)
     @app = app
     @options = options
     @remaining_requests = @options[:limit] || 60
-    @clients = {}
+    @clients = store
     @block = block
   end
 
@@ -41,7 +42,7 @@ class RateLimiter
   end
 
   def prepare_headers
-    @clients[@id] ||= {}
+    @clients.set(@id, {}) if @clients.get(@id).nil?
     reset_time
     decrease_ratelimit
     set_header('X-RateLimit-Limit', @options[:limit] || 60)
@@ -49,19 +50,19 @@ class RateLimiter
     set_header('X-RateLimit-Reset', @reset_time)
   end
 
+  def reset_time
+    @reset_time = @clients.get(@id)['reset_time']
+    if @reset_time.nil? || Time.now.to_i - @reset_time > 3600
+      @reset_time = @clients.get(@id)['reset_time'] = Time.now.to_i
+      @remaining_requests = @clients.get(@id)['remaining_requests'] = @options[:limit] || 60
+    end
+  end
+
   def decrease_ratelimit
-    @remaining_requests = @clients[@id]['remaining_requests'] -= 1
+    @remaining_requests = @clients.get(@id)['remaining_requests'] -= 1
   end
 
   def set_header(header, value)
     @headers[header] = value.to_s
-  end
-
-  def reset_time
-    @reset_time = @clients[@id]['reset_time']
-    if @reset_time.nil? || Time.now.to_i - @reset_time > 3600
-      @reset_time = @clients[@id]['reset_time'] = Time.now.to_i
-      @remaining_requests = @clients[@id]['remaining_requests'] = @options[:limit] || 60
-    end
   end
 end
