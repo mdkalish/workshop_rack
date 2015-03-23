@@ -4,7 +4,7 @@ require 'pry'
 
 class RateLimiter
   def initialize(app, options = {}, store = Store.new, &block)
-    @app = app
+    @app = Rack::Lint.new(app)
     @options = options
     @remaining_requests = @options[:limit] || 60
     @clients = store
@@ -22,7 +22,8 @@ class RateLimiter
     end
     @last_id = @id
     @status, @headers, body = @app.call(env)
-    prepare_headers
+    update_headers_values
+    set_headers
     [@status, @headers, body]
   end
 
@@ -41,13 +42,10 @@ class RateLimiter
     end
   end
 
-  def prepare_headers
+  def update_headers_values
     @clients.set(@id, {}) if @clients.get(@id).nil?
     reset_time
     decrease_ratelimit
-    set_header('X-RateLimit-Limit', @options[:limit] || 60)
-    set_header('X-RateLimit-Remaining', @remaining_requests)
-    set_header('X-RateLimit-Reset', @reset_time)
   end
 
   def reset_time
@@ -60,6 +58,12 @@ class RateLimiter
 
   def decrease_ratelimit
     @remaining_requests = @clients.get(@id)['remaining_requests'] -= 1
+  end
+
+  def set_headers
+    set_header('X-RateLimit-Limit', @options[:limit] || 60)
+    set_header('X-RateLimit-Remaining', @remaining_requests)
+    set_header('X-RateLimit-Reset', @reset_time)
   end
 
   def set_header(header, value)

@@ -10,42 +10,40 @@ describe RateLimiter do
   end
 
   context 'upon any request' do
+    before { get '/' }
+
     it 'returns correct response' do
-      get '/'
       expect(last_response.body).to eq('Smoke test, darling.')
     end
 
     it 'adds X-RateLimit-Limit header' do
-      get '/'
       expect(last_response.headers).to have_key('X-RateLimit-Limit')
       expect(last_response.headers['X-RateLimit-Limit']).to eq('60')
     end
 
     it 'adds X-RateLimit-Remaining header' do
-      get '/'
       expect(last_response.headers).to have_key('X-RateLimit-Remaining')
       expect(last_response.headers['X-RateLimit-Remaining']).to eq('59')
     end
 
     it 'adds X-RateLimit-Reset header' do
-      get '/'
       expect(last_response.headers).to have_key('X-RateLimit-Reset')
     end
 
     it 'decreases X-RateLimit-Remaining header' do
-      3.times { get '/' }
+      2.times { get '/' }
       expect(last_response.headers['X-RateLimit-Remaining']).to eq('57')
     end
 
     it 'resets X-RateLimit-Remaining after timelimit lapse' do
       remaining_before_calls = get('/').headers['X-RateLimit-Remaining'].to_i
-      5.times { get '/' }
+      4.times { get '/' }
       remaining_after_calls = last_response.headers['X-RateLimit-Remaining'].to_i
-      expect(remaining_after_calls).to eq(remaining_before_calls - 5)
+      expect(remaining_after_calls).to eq(remaining_before_calls - 4)
 
-      Timecop.travel(Time.now + 3601) # lapse is 3600
+      Timecop.travel(Time.now + 3601)
       remaining_after_reset = get('/').headers['X-RateLimit-Remaining'].to_i
-      expect(remaining_after_reset).to eq(remaining_before_calls)
+      expect(remaining_after_reset - 1).to eq(remaining_before_calls)
     end
   end
 
