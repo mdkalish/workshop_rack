@@ -39,7 +39,8 @@ describe RateLimiter do
       remaining_before_calls = get('/').headers['X-RateLimit-Remaining'].to_i
       4.times { get '/' }
       remaining_after_calls = last_response.headers['X-RateLimit-Remaining'].to_i
-      expect(remaining_after_calls).to eq(remaining_before_calls - 4)
+      expect(remaining_after_calls).not_to be_within(3).of(remaining_before_calls)
+      expect(remaining_after_calls).to be_within(4).of(remaining_before_calls)
 
       Timecop.travel(Time.now + 3601)
       remaining_after_reset = get('/').headers['X-RateLimit-Remaining'].to_i
