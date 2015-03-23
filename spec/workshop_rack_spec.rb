@@ -106,15 +106,11 @@ describe RateLimiter do
         let(:request) { Rack::MockRequest.new(app) }
         let(:response) { request.get('/') }
 
-        it 'no limiting headers are present' do
-          expect(response.headers['X-RateLimit-Limit']).to be_nil
-          expect(response.headers['X-RateLimit-Remaining']).to be_nil
-          expect(response.headers['X-RateLimit-Reset']).to be_nil
-        end
-
         it 'responds without limiting headers' do
-          expect(response.headers.length).to eq(2)
-          expect(response.headers.keys).to eq(['Content-Type', 'Content-Length'])
+          expect(response.headers).not_to be_nil
+          expect(response.headers.keys).not_to include('X-RateLimit-Limit')
+          expect(response.headers.keys).not_to include('X-RateLimit-Remaining')
+          expect(response.headers.keys).not_to include('X-RateLimit-Reset')
         end
       end
     end
