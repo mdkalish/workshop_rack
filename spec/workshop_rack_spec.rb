@@ -123,12 +123,12 @@ describe RateLimiter do
       expect(last_response.headers['X-RateLimit-Limit']).to eq('4')
     end
 
-    it 'calls the app until hitting ratelimit' do
-      expect(test_app).to receive(:call).and_call_original
-      get '/'
+    it 'calls the app until hitting arbitrary ratelimit' do
+      expect(test_app).to receive(:call).and_call_original.exactly(4).times
+      5.times { get '/' }
     end
 
-    it 'blocks requests after hitting ratelimit' do
+    it 'blocks requests after hitting arbitrary ratelimit' do
       5.times { get '/' }
       expect(last_response).not_to be_ok
       expect(last_response.status).to eq(429)

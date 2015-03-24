@@ -17,10 +17,10 @@ class RateLimiter
       return [@status, @headers, body]
     end
     determine_id(env)
-    if @remaining_requests <= 0 && @last_id == @id
+    set_client_limit_if_not_stored_yet
+    if @clients.get(@id)['remaining_requests'] <= 0
       return [429, {}, ['Too many requests.']]
     end
-    @last_id = @id
     @status, @headers, body = @app.call(env)
     update_headers_values
     set_headers
@@ -42,8 +42,11 @@ class RateLimiter
     end
   end
 
+  def set_client_limit_if_not_stored_yet
+    @clients.set(@id, {'remaining_requests' => @remaining_requests + 1}) if @clients.get(@id).nil?
+  end
+
   def update_headers_values
-    @clients.set(@id, {}) if @clients.get(@id).nil?
     reset_time
     decrease_ratelimit
   end
