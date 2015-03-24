@@ -12,7 +12,7 @@ class RateLimiter
   end
 
   def call(env)
-    @block = ->(env) { env['REMOTE_ADDR'] } if @block.nil?
+    @block = ->(args) { args['REMOTE_ADDR'] } if @block.nil?
     return @app.call(env) if @block.call(env).nil?
     @id = @block.call(env)
     set_client_limit_if_not_stored_yet
@@ -26,7 +26,7 @@ class RateLimiter
   private
 
   def set_client_limit_if_not_stored_yet
-    @clients.set(@id, {'remaining_requests' => @remaining_requests + 1}) if @clients.get(@id).nil?
+    @clients.set(@id, 'remaining_requests' => @remaining_requests + 1) if @clients.get(@id).nil?
   end
 
   def update_headers_values
