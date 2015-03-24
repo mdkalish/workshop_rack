@@ -12,15 +12,11 @@ class RateLimiter
   end
 
   def call(env)
-    if !@block.nil? && nil_or_empty?([@block.call(env)])
-      @status, @headers, body = @app.call(env)
-      return [@status, @headers, body]
-    end
-    determine_id(env)
+    @block = ->(env) { env['REMOTE_ADDR'] } if @block.nil?
+    return @app.call(env) if @block.call(env).nil?
+    @id = @block.call(env)
     set_client_limit_if_not_stored_yet
-    if @clients.get(@id)['remaining_requests'] <= 0
-      return [429, {}, ['Too many requests.']]
-    end
+    return [429, {}, ['Too many requests.']] if @clients.get(@id)['remaining_requests'] <= 0
     @status, @headers, body = @app.call(env)
     update_headers_values
     set_headers
@@ -28,19 +24,6 @@ class RateLimiter
   end
 
   private
-
-  def nil_or_empty?(obj = [])
-    return true if obj.all? { |o| o.nil? }
-    obj.all? { respond_to?(:empty?) ? !!empty? : !self }
-  end
-
-  def determine_id(env)
-    if @block.nil?
-      @id = env['REMOTE_ADDR']
-    elsif @block.call(env)
-      @id = @block.call(env)
-    end
-  end
 
   def set_client_limit_if_not_stored_yet
     @clients.set(@id, {'remaining_requests' => @remaining_requests + 1}) if @clients.get(@id).nil?
