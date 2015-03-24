@@ -3,7 +3,8 @@ require 'spec_helper'
 describe RateLimiter do
   include Rack::Test::Methods
   let(:test_app) { ->(_env) { [200, {'Content-Type' => 'text/html'}, ['Smoke test, darling.']] } }
-  let(:app) { Rack::Lint.new(RateLimiter.new(test_app)) }
+  let(:raw_app) { RateLimiter.new(test_app) }
+  let(:app) { Rack::Lint.new(raw_app) }
 
   it 'has a version number' do
     expect(RateLimiter::VERSION).not_to be nil
@@ -70,7 +71,7 @@ describe RateLimiter do
 
     context 'distinguished by custom ids passed in block' do
       context 'when block returns valid identifier' do
-        let (:app) { RateLimiter.new(test_app) { |env| env['QUERY_STRING'] } }
+        let (:raw_app) { RateLimiter.new(test_app) { |env| env['QUERY_STRING'] } }
 
         it 'responds with limiting headers' do
           get '/'
@@ -101,7 +102,7 @@ describe RateLimiter do
       end
 
       context 'when block returns nil' do
-        let(:app) { RateLimiter.new(test_app) { nil } }
+        let(:raw_app) { RateLimiter.new(test_app) { nil } }
 
         it 'responds without limiting headers' do
           get '/'
@@ -115,7 +116,7 @@ describe RateLimiter do
   end
 
   context 'when app is initialized with options[:limit]' do
-    let(:app) { RateLimiter.new(test_app, limit: 4) }
+    let(:raw_app) { RateLimiter.new(test_app, limit: 4) }
 
     it 'adds arbitrary X-RateLimit-Limit header' do
       get '/'
@@ -148,7 +149,7 @@ describe RateLimiter do
   end
 
   context 'when called with explicit store' do
-    let(:app) { RateLimiter.new(test_app, {limit: 5}, @store) }
+    let(:raw_app) { RateLimiter.new(test_app, {limit: 5}, @store) }
 
     before do
       @get_return_value = {'reset_time' => 1, 'remaining_requests' => 2}
