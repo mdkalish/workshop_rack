@@ -6,11 +6,13 @@ describe RateLimiter do
   let(:raw_app) { RateLimiter.new(test_app) }
   let(:app) { Rack::Lint.new(raw_app) }
 
+  before { allow(test_app).to receive(:call).and_call_original }
+
   it 'has a version number' do
     expect(RateLimiter::VERSION).not_to be nil
   end
 
-  context 'upon any request' do
+  context 'upon any request to default app' do
     before { get '/' }
 
     it 'returns correct response' do
@@ -45,7 +47,24 @@ describe RateLimiter do
 
       Timecop.travel(Time.now + 3601)
       remaining_after_reset = get('/').headers['X-RateLimit-Remaining'].to_i
-      expect(remaining_after_reset - 1).to eq(remaining_before_calls)
+      expect(remaining_after_reset).to eq(remaining_before_calls + 1)
+      Timecop.return
+    end
+
+    context 'blocking clients after hitting ratelimit' do
+      before { 60.times { get '/' } }
+
+      it 'works basing on accumulated requests for a client individually' do
+        expect(last_response).not_to be_ok
+        expect(last_response.status).to eq(429)
+        expect(last_response.body).to eq('Too many requests.')
+      end
+
+      it 'does not work basing on accumulated requests from different clients' do
+        get '/', {}, 'REMOTE_ADDR' => '10.0.0.4'
+        expect(last_response.headers['X-RateLimit-Remaining']).to eq('59')
+        expect(test_app).to have_received(:call).exactly(61).times
+      end
     end
   end
 
@@ -115,36 +134,30 @@ describe RateLimiter do
     end
   end
 
-  context 'when app is initialized with options[:limit]' do
+  context 'when app is initialized with custom ratelimit' do
     let(:raw_app) { RateLimiter.new(test_app, limit: 4) }
 
-    it 'adds arbitrary X-RateLimit-Limit header' do
-      get '/'
+    before { 4.times { get '/' } }
+
+    it 'adds custom X-RateLimit-Limit header' do
       expect(last_response.headers['X-RateLimit-Limit']).to eq('4')
     end
 
-    it 'calls the app until hitting arbitrary ratelimit' do
-      expect(test_app).to receive(:call).and_call_original.exactly(4).times
-      5.times { get '/' }
+    it 'calls the app no more times than custom ratelimit' do
+      get '/'
+      expect(test_app).to have_received(:call).exactly(4).times
     end
 
-    it 'blocks requests after hitting arbitrary ratelimit' do
-      5.times { get '/' }
+    it 'blocks client after hitting custom ratelimit' do
+      get '/'
       expect(last_response).not_to be_ok
       expect(last_response.status).to eq(429)
       expect(last_response.body).to eq('Too many requests.')
     end
 
-    it 'prevents calling the app if ratelimit hit' do
-      4.times { get '/' }
-      expect(test_app).not_to receive(:call)
-      get '/'
-    end
-
-    it 'does not prevent calling the app if ratelimit hit by other client' do
-      4.times { get '/' }
-      expect(test_app).to receive(:call).and_call_original
+    it 'does not prevent calling the app if custom ratelimit hit by other client' do
       get '/', {}, 'REMOTE_ADDR' => '10.0.0.4'
+      expect(test_app).to have_received(:call).exactly(5).times
     end
   end
 
