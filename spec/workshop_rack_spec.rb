@@ -102,14 +102,13 @@ describe RateLimiter do
 
       context 'when block returns nil' do
         let(:app) { RateLimiter.new(test_app) { nil } }
-        let(:request) { Rack::MockRequest.new(app) }
-        let(:response) { request.get('/') }
 
         it 'responds without limiting headers' do
-          expect(response.headers).not_to be_nil
-          expect(response.headers.keys).not_to include('X-RateLimit-Limit')
-          expect(response.headers.keys).not_to include('X-RateLimit-Remaining')
-          expect(response.headers.keys).not_to include('X-RateLimit-Reset')
+          get '/'
+          expect(last_response.headers).not_to be_nil
+          expect(last_response.headers.keys).not_to include('X-RateLimit-Limit')
+          expect(last_response.headers.keys).not_to include('X-RateLimit-Remaining')
+          expect(last_response.headers.keys).not_to include('X-RateLimit-Reset')
         end
       end
     end

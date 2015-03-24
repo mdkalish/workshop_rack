@@ -4,7 +4,7 @@ require 'pry'
 
 class RateLimiter
   def initialize(app, options = {}, store = Store.new, &block)
-    @app = Rack::Lint.new(app)
+    @app = app
     @options = options
     @remaining_requests = @options[:limit] || 60
     @clients = store
