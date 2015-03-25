@@ -1,6 +1,5 @@
 require 'time'
 require 'rate_limiter/store'
-require 'pry'
 
 class RateLimiter
   def initialize(app, options = {}, store = Store.new, &block)
