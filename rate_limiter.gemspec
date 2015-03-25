@@ -4,7 +4,7 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require 'rate_limiter/version'
 
 Gem::Specification.new do |spec|
-  spec.name          = 'RateLimiter'
+  spec.name          = 'rate_limiter'
   spec.version       = RateLimiter::VERSION
   spec.authors       = 'mdkalish'
   spec.email         = 'mdkalish4git@gmail.com'
