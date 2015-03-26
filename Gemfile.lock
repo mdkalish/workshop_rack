@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    rate_limiter (0.1.5)
+    rate_limiter (0.2.1)
 
 GEM
   remote: https://rubygems.org/

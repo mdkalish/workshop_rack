@@ -11,7 +11,7 @@ class RateLimiter
   end
 
   def call(env)
-    @block = ->(args) { args['REMOTE_ADDR'] } if @block.nil?
+    @block = ->(args) { args["HTTP_X_FORWARDED_FOR"] || args['REMOTE_ADDR'] } if @block.nil?
     return @app.call(env) if @block.call(env).nil?
     @id = @block.call(env)
     set_client_limit_if_not_stored_yet
