@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    RateLimiter (0.1.0)
+    rate_limiter (0.1.5)
 
 GEM
   remote: https://rubygems.org/
@@ -37,10 +37,10 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  RateLimiter!
   bundler (~> 1.8)
   pry (~> 0.10)
   rack-test (~> 0.6)
   rake (~> 10.0)
+  rate_limiter!
   rspec (~> 3.2)
   timecop (~> 0.7)

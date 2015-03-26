@@ -4,10 +4,11 @@ class Store
   end
 
   def get(key)
-    @store[key]
+    @store[key].dup if @store.key?(key)
   end
 
-  def set(key, value)
-    @store[key] = value
+  def set(key, inner_key, value)
+    @store[key] ||= {}
+    @store[key][inner_key] = value
   end
 end

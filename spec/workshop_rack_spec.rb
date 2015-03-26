@@ -167,14 +167,13 @@ describe RateLimiter do
     before do
       @get_return_value = {'reset_time' => 1, 'remaining_requests' => 2}
       @store = double('store')
+      allow(@store).to receive(:set)
       allow(@store).to receive(:get).with('1.2.3.4').and_return(@get_return_value)
     end
 
     it 'uses the store object properly' do
-      expect(@store.get('1.2.3.4')).to eq(@get_return_value)
       get '/', {}, 'REMOTE_ADDR' => '1.2.3.4'
-      expect(@store.get('1.2.3.4')['reset_time']).to eq(Time.now.to_i)
-      expect(@store.get('1.2.3.4')['remaining_requests']).to eq(4)
+      expect(@store.get('1.2.3.4')).to eq(@get_return_value)
     end
   end
 end

@@ -25,7 +25,7 @@ class RateLimiter
   private
 
   def set_client_limit_if_not_stored_yet
-    @clients.set(@id, 'remaining_requests' => @remaining_requests + 1) if @clients.get(@id).nil?
+    @clients.set(@id, 'remaining_requests', @remaining_requests + 1) if @clients.get(@id).nil?
   end
 
   def update_headers_values
@@ -36,13 +36,16 @@ class RateLimiter
   def reset_time
     @reset_time = @clients.get(@id)['reset_time']
     if @reset_time.nil? || Time.now.to_i - @reset_time > 3600
-      @reset_time = @clients.get(@id)['reset_time'] = Time.now.to_i
-      @remaining_requests = @clients.get(@id)['remaining_requests'] = @options[:limit] || 60
+      @reset_time = Time.now.to_i
+      @remaining_requests = @options[:limit] || 60
+      @clients.set(@id, 'reset_time', @reset_time)
+      @clients.set(@id, 'remaining_requests', @remaining_requests)
     end
   end
 
   def decrease_ratelimit
     @remaining_requests = @clients.get(@id)['remaining_requests'] -= 1
+    @clients.set(@id, 'remaining_requests', @remaining_requests)
   end
 
   def set_headers
