@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'dalli'
 
 describe RateLimiter do
   include Rack::Test::Methods

@@ -7,8 +7,8 @@ class Store
     @store[key].dup if @store.key?(key)
   end
 
-  def set(key, inner_key, value)
+  def set(key, value)
     @store[key] ||= {}
-    @store[key][inner_key] = value
+    @store[key][value.keys[0]] = value.values[0]
   end
 end
