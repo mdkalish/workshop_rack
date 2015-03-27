@@ -8,7 +8,6 @@ class Store
   end
 
   def set(key, value)
-    @store[key] ||= {}
-    @store[key][value.keys[0]] = value.values[0]
+    @store[key] = value
   end
 end

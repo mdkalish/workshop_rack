@@ -14,7 +14,7 @@ class RateLimiter
     @block = ->(args) { args["HTTP_X_FORWARDED_FOR"] || args['REMOTE_ADDR'] } if @block.nil?
     return @app.call(env) if @block.call(env).nil?
     @id = @block.call(env)
-    set_client_limit_if_not_stored_yet
+    set_client_limit if @clients.get(@id).nil?
     return [429, {}, ['Too many requests.']] if @clients.get(@id)['remaining_requests'] <= 0
     @status, @headers, body = @app.call(env)
     update_headers_values
@@ -24,8 +24,8 @@ class RateLimiter
 
   private
 
-  def set_client_limit_if_not_stored_yet
-    @clients.set(@id, 'remaining_requests' => @remaining_requests + 1) if @clients.get(@id).nil?
+  def set_client_limit
+    @clients.set(@id, 'remaining_requests' => @remaining_requests + 1)
   end
 
   def update_headers_values
@@ -38,14 +38,14 @@ class RateLimiter
     if @reset_time.nil? || Time.now.to_i - @reset_time > 3600
       @reset_time = Time.now.to_i
       @remaining_requests = @options[:limit] || 60
-      @clients.set(@id, 'reset_time' => @reset_time)
-      @clients.set(@id, 'remaining_requests' => @remaining_requests)
+      store_updated_values
     end
   end
 
   def decrease_ratelimit
-    @remaining_requests = @clients.get(@id)['remaining_requests'] -= 1
-    @clients.set(@id, 'remaining_requests' => @remaining_requests)
+    @remaining_requests = @clients.get(@id)['remaining_requests']
+    @remaining_requests -= 1
+    store_updated_values
   end
 
   def set_headers
@@ -56,5 +56,10 @@ class RateLimiter
 
   def set_header(header, value)
     @headers[header] = value.to_s
+  end
+
+  def store_updated_values
+    @clients.set(@id, {'remaining_requests' => @remaining_requests,
+                       'reset_time' => @reset_time})
   end
 end
