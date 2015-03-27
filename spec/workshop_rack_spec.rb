@@ -38,17 +38,21 @@ describe RateLimiter do
       expect(last_response.headers['X-RateLimit-Remaining']).to eq('57')
     end
 
-    it 'resets X-RateLimit-Remaining after timelimit lapse' do
-      remaining_before_calls = get('/').headers['X-RateLimit-Remaining'].to_i
-      4.times { get '/' }
-      remaining_after_calls = last_response.headers['X-RateLimit-Remaining'].to_i
-      expect(remaining_after_calls).not_to be_within(3).of(remaining_before_calls)
-      expect(remaining_after_calls).to be_within(4).of(remaining_before_calls)
+    context 'with timelimit for storing requests count' do
+      before { 9.times { get '/' } }
+      after { Timecop.return }
 
-      Timecop.travel(Time.now + 3601)
-      remaining_after_reset = get('/').headers['X-RateLimit-Remaining'].to_i
-      expect(remaining_after_reset).to eq(remaining_before_calls + 1)
-      Timecop.return
+      it 'stores X-RateLimit-Remaining within timelimit' do
+        Timecop.travel(Time.now + 3600)
+        get '/'
+        expect(last_response.headers['X-RateLimit-Remaining']).to eq('49')
+      end
+
+      it 'resets X-RateLimit-Remaining after timelimit lapse' do
+        Timecop.travel(Time.now + 3601)
+        get '/'
+        expect(last_response.headers['X-RateLimit-Remaining']).to eq('59')
+      end
     end
 
     context 'blocking clients after hitting ratelimit' do
