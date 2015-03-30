@@ -55,7 +55,7 @@ describe RateLimiter do
       end
     end
 
-    context 'blocking clients after hitting ratelimit' do
+    describe 'blocking clients after hitting ratelimit' do
       before { 60.times { get '/' } }
 
       it 'works basing on accumulated requests for a client individually' do

@@ -2,11 +2,11 @@ require 'time'
 require 'rate_limiter/store'
 
 class RateLimiter
-  def initialize(app, options = {}, store = Store.new, &block)
+  def initialize(app, options = {}, &block)
     @app = app
     @options = options
     @remaining_requests = @options[:limit] || 60
-    @clients = store
+    @clients = options[:store] || Store.new
     @block = block
   end
 
@@ -43,8 +43,7 @@ class RateLimiter
   end
 
   def decrease_ratelimit
-    @remaining_requests = @clients.get(@id)['remaining_requests']
-    @remaining_requests -= 1
+    @remaining_requests = @clients.get(@id)['remaining_requests'] -= 1
     store_updated_values
   end
 
