@@ -166,7 +166,7 @@ describe RateLimiter do
   end
 
   context 'when called with explicit store' do
-    let(:raw_app) { RateLimiter.new(test_app, {limit: 5}, @store) }
+    let(:raw_app) { RateLimiter.new(test_app, {limit: 5, store: @store}) }
 
     before do
       @get_return_value = {'reset_time' => 1, 'remaining_requests' => 2}
