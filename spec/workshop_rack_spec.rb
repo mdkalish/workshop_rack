@@ -166,18 +166,22 @@ describe RateLimiter do
   end
 
   context 'when called with explicit store' do
-    let(:raw_app) { RateLimiter.new(test_app, {limit: 5, store: @store}) }
+    let(:store) { double('store') }
+    let(:raw_app) { RateLimiter.new(test_app, {limit: 5, store: store}) }
+    let(:response_from_get) { {'reset_time' => 1, 'remaining_requests' => 2} }
 
     before do
-      @get_return_value = {'reset_time' => 1, 'remaining_requests' => 2}
-      @store = double('store')
-      allow(@store).to receive(:set)
-      allow(@store).to receive(:get).with('1.2.3.4').and_return(@get_return_value)
+      allow(store).to receive(:set)
+      allow(store).to receive(:get).with('1.2.3.4').and_return(response_from_get)
     end
 
-    it 'uses the store object properly' do
+    it 'calls set on the store' do
       get '/', {}, 'REMOTE_ADDR' => '1.2.3.4'
-      expect(@store.get('1.2.3.4')).to eq(@get_return_value)
+      expect(store).to have_received(:set).exactly(2).times
+    end
+
+    it 'receives correct response from get' do
+      expect(store.get('1.2.3.4')).to eq(response_from_get)
     end
   end
 end
