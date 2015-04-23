@@ -11,8 +11,8 @@ class RateLimiter
   end
 
   def call(env)
-    return @app.call(env) if @block.call(env).nil?
     @id = @block.call(env)
+    return @app.call(env) if @id.nil?
     set_remaining_requests if @clients.get(@id).nil?
     @clients_limits = @clients.get(@id)
     reset_clients_limits if should_reset_limits?
