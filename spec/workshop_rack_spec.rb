@@ -175,9 +175,14 @@ describe RateLimiter do
       allow(store).to receive(:get).with('1.2.3.4').and_return(response_from_get)
     end
 
-    it 'calls set on the store' do
+    it 'calls set on the store exactly 1 time' do
       get '/', {}, 'REMOTE_ADDR' => '1.2.3.4'
-      expect(store).to have_received(:set).exactly(2).times
+      expect(store).to have_received(:set).exactly(1).times
+    end
+
+    it 'calls get on the store exactly 1 time' do
+      get '/', {}, 'REMOTE_ADDR' => '1.2.3.4'
+      expect(store).to have_received(:get).exactly(1).times
     end
 
     it 'receives correct response from get' do
